@@ -10,12 +10,14 @@ function initBuffers(gl) {
     
     const indexBuffer = initIndexBuffer(gl);
 
+    const normalBuffer = initNormalBuffer(gl);
+
     return {
       position: positionBuffer,
-      // color: colorBuffer,
+      normal: normalBuffer,
       textureCoord: textureCoordBuffer,
       indices: indexBuffer,
-    };
+    }
   }
   
   /**
@@ -151,6 +153,9 @@ function initBuffers(gl) {
     return indexBuffer;
   }
 
+    /**
+ * @param {WebGL2RenderingContext} gl 
+ * */
   function initTextureBuffer(gl) {
     const textureCoordBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);

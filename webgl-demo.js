@@ -30,34 +30,57 @@ function main(){
      * We need our vertex shader to handle the positioning of our vertex coordinates which we will then  
      * */
     // Vertex shader program
-    // Vertex shader program
-
     const vsSource = `
         attribute vec4 aVertexPosition;
+        attribute vec3 aVertexNormal;
         attribute vec2 aTextureCoord;
 
+        uniform mat4 uNormalMatrix;
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
 
         varying highp vec2 vTextureCoord;
+        varying highp vec3 vLighting;
 
         void main(void) {
             gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
             vTextureCoord = aTextureCoord;
+
+            // Apply lighting effect
+
+            highp vec3 ambientLight = vec3(0.3, 0.3, 0.3);
+            highp vec3 directionalLightColor = vec3(1, 1, 1);
+            highp vec3 directionalVector = normalize(vec3(0.85, 0.8, 0.75));
+
+            highp vec4 transformedNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
+
+            highp float directional = max(dot(transformedNormal.xyz, directionalVector), 0.0);
+            vLighting = ambientLight + (directionalLightColor * directional);
         }
-    `;
-    
-    // Fragment shader program
+  `;
+  //the vLighting value's range will be [0.3, 1.3] , summing 0.3 ambient/constant light vector and scalar product of another vector for the directional light
+
+
+  //A surface that is perpendicular to a light source will receive 100% light, surfaces that are parallel to alight will receive no light from the source
+  //The % amount of light a surface gets is described by sin(theta), where theta = PI/2 is the greatest amount of light and theta = 0 is the least amount of light.
+  //Using this information, the fragment shader is calculating the amount of light , we need to know the percentage of light each vertex is receiving on a given face
+  //This data could be stored in a variable, does it need to be stored in any other data structure? 
+  //Based on the direction of the light relative to the surface, the amount of light received varies which will change the light/darkness of the light shown on each pixel in the light.  
+ // Fragment shader program
 
     const fsSource = `
         varying highp vec2 vTextureCoord;
+        varying highp vec3 vLighting;
 
         uniform sampler2D uSampler;
 
         void main(void) {
-            gl_FragColor = texture2D(uSampler, vTextureCoord);
+            highp vec4 texelColor = texture2D(uSampler, vTextureCoord);
+
+            gl_FragColor = vec4(texelColor.rgb * vLighting, texelColor.a);
         }
     `;
+
 
     //
     // Initialize a shader program, so WebGL knows how to draw our data
@@ -133,22 +156,23 @@ function main(){
     const programInfo = {
         program: shaderProgram,
         attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
-            textureCoord: gl.getAttribLocation(shaderProgram, "aTextureCoord"),
+          vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+          vertexNormal: gl.getAttribLocation(shaderProgram, "aVertexNormal"),
+          textureCoord: gl.getAttribLocation(shaderProgram, "aTextureCoord"),
         },
         uniformLocations: {
-            projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
-            modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
-            uSampler: gl.getUniformLocation(shaderProgram, "uSampler"),
+          projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
+          modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+          normalMatrix: gl.getUniformLocation(shaderProgram, "uNormalMatrix"),
+          uSampler: gl.getUniformLocation(shaderProgram, "uSampler"),
         },
-    };
+      };
 
     // Here's where we call the routine that builds all the
     // objects we'll be drawing.
     const buffers = initBuffers(gl);
     const texture = loadTexture(gl, "cubetexture.png");
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
 
     let then = 0;
 
